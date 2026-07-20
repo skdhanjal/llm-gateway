@@ -1,0 +1,26 @@
+# --- Python Virtual Environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Bytecode / Cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Environment Secrets ---
+.env
+.env.local
+
+# --- Project Metrics / Local Logs ---
+metrics.jsonl
+*.log
+
+# --- IDEs / Editors ---
+.vscode/
+.idea/
+
+# --- Temporary / Benchmark Artifacts ---
+# You can uncomment these if you DON'T want to track these in git
+# bench_results_day1.md
