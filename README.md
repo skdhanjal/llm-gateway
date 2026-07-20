@@ -1,4 +1,4 @@
-#llm-gateway
+# llm-gateway
 A foundational LLM gateway designed for observability and performance benchmarking. This service provides a standardized interface for LLM inference, ensuring that every request is instrumented to capture the metrics that matter most to production systems.
 
 Core Features
