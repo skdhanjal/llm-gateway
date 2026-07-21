@@ -31,7 +31,7 @@ class StreamStats():
         return 0
 
 
-async def stream_openai(prompt: str, max_output_tokens: int = 512, model: str | None = None, ) -> AsyncIterator[tuple[str, StreamStats]]:
+async def stream_openai(prompt: str, max_output_tokens: int = 512, model: str | None = None, **extra) -> AsyncIterator[tuple[str, StreamStats]]:
     """
     Stream responses from OpenAI's API.
     Yields tuples of (response_text, StreamStats).
@@ -45,7 +45,7 @@ async def stream_openai(prompt: str, max_output_tokens: int = 512, model: str | 
         max_output_tokens=max_output_tokens,
         stream=True,
         store=False,
-        timeout=settings.request_timeout_s
+        **extra
     )
 
     async for event in stream:

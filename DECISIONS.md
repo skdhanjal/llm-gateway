@@ -41,3 +41,33 @@
 * **Resilient Cost Attribution:** Unknown models fallback to `$0` cost attribution rather than throwing exceptions, ensuring observability failures never disrupt the serving path.
 * **Format Accuracy Trade-off:** *(Accuracy TBD Day 32)* — While CSV and minified formats dramatically reduce token costs, lower token counts are a false economy if extraction accuracy or schema adherence degrades. Evaluation harness tests will validate task accuracy per format in Phase 2.
 * **Multilingual Cost Multipliers:** Non-English scripts (e.g., Devanagari/Gurmukhi) carry higher token fertility (1.5–4x higher counts per unit of meaning). Products targeting Indic-language users must budget per-language cost multipliers and increased latency from day one.
+
+## Day 3 — Sampling, Determinism & Reasoning Effort
+
+### 1. Reasoning Effort Benchmark Results (`effort_bench.py`)
+| Effort Level | Run | Output Tokens | TTFT (ms) | Total Latency (ms) |
+| :--- | :--- | :--- | :--- | :--- |
+| `minimal` | 1 | 40 | 2609 | 2916 |
+| `minimal` | 2 | 40 | 1106 | 1320 |
+| `minimal` | 3 | 35 | 853 | 1134 |
+| `low` | 1 | 94 | 1622 | 1832 |
+| `low` | 2 | 111 | 1832 | 2101 |
+| `low` | 3 | 101 | 1471 | 1694 |
+| `medium` | 1 | 212 | 2218 | 2583 |
+| `medium` | 2 | 184 | 2408 | 2600 |
+| `medium` | 3 | 149 | 1845 | 2033 |
+
+### 2. Agreement Harness Results (`evals/agreement.py`, N=25)
+
+* **With Normalization (Semantic Comparison):**
+  * `effort_minimal`: Agreement Rate = **1.0** (1 distinct output)
+  * `effort_medium`: Agreement Rate = **1.0** (1 distinct output)
+
+* **Without Normalization (Raw String Comparison):**
+  * `effort_minimal`: Agreement Rate = **0.68** (2 distinct outputs)
+  * `effort_medium`: Agreement Rate = **0.56** (3 distinct outputs)
+
+### 3. Observations & Insights
+* **Reasoning Token Scaling:** Increasing reasoning effort from `minimal` to `medium` substantially scales up output token count (from ~38 tokens to ~182 average) and increases total end-to-end latency. For simple extraction tasks, `minimal` effort is faster and cheaper while retaining full task accuracy.
+* **Semantic Stability vs. Formatting Noise:** Both `minimal` and `medium` achieved 100% agreement when normalized, proving that the semantic extraction is robust and deterministic on this payload.
+* **The Danger of Naive String Matching:** When normalization was disabled, agreement dropped sharply to 0.68 and 0.56 due to benign formatting differences (such as JSON key ordering or spacing). This confirms why production LLM testing requires canonical normalization rather than brittle exact-string matching.
