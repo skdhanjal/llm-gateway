@@ -17,6 +17,7 @@ def normalize(raw: str) -> str:
 
 async def agreement(prompt: str, n: int = 25, concurrency: int = 5, **params):
     sem = asyncio.Semaphore(concurrency)          # be polite to rate limits
+    
     async def guarded():
         async with sem:
             return normalize(await run_once(prompt, **params))
@@ -24,6 +25,7 @@ async def agreement(prompt: str, n: int = 25, concurrency: int = 5, **params):
     outputs = await asyncio.gather(*[guarded() for _ in range(n)])
     tally = collections.Counter(outputs)
     majority, m_count = tally.most_common(1)[0]
+    
     return {
         "n": n,
         "distinct_outputs": len(tally),

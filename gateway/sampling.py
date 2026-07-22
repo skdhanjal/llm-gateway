@@ -1,4 +1,4 @@
-from .routes_config import Intent
+from .routes_cfg import Intent
 
 # Capability map: which parameter regime each model family speaks.
 # Extend on Day 8 (Groq gpt-oss, Gemini) and Day 12 (fallback chains).
