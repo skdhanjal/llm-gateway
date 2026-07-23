@@ -2,13 +2,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from gateway.schemas import SCHEMA_REGISTRY
+from gateway.structured import structured_pipeline
+
 from .sampling import params_for
 from .routes_cfg import ROUTES
 from gateway.context import BudgetExceeded, enforce_budget
 from gateway.routes_cfg import RouteConfig
 from .token_math import count_tokens
 from .providers import stream_openai
-from .metrics import log_request
+from .metrics import log_request, log_structured
 from .config import settings
 
 app = FastAPI(title="llm-gateway", version="0.1.0")
@@ -67,3 +70,30 @@ async def chat_stream(req: ChatRequest):
             )
             
     return StreamingResponse(generate(), media_type="text/plain")
+
+class StructuredRequest(BaseModel):
+    task: str
+    schema: str                  # registry key, e.g. "company_facts"
+
+@app.post("/v1/structured")
+async def structured_endpoint(req: StructuredRequest):
+    schema_cls = SCHEMA_REGISTRY.get(req.schema)
+    if schema_cls is None:
+        raise HTTPException(404, f"unknown schema: {req.schema}")
+
+    # non-streaming by design (Sec 2.1) -- await the whole pipeline, then respond
+    result = await structured_pipeline(req.task, schema_cls)
+
+    log_structured(
+        route="structured", model=settings.default_model, schema=req.schema,
+        status=result.status, attempts=result.attempts,
+        total_ms=result.total_ms, usage=result.usage,
+    )
+    if result.status == "dead_letter":
+        # Sec 2.2's alert -- a real pager rule from Phase 5 onward
+        print(f"[ALERT] DLQ write -- schema={req.schema} task={req.task[:80]!r}")
+
+    if result.status in ("refused", "dead_letter"):
+        # surface failure explicitly -- a 200 with data=None invites callers to skip the check
+        raise HTTPException(422, {"status": result.status, "attempts": result.attempts})
+    return result

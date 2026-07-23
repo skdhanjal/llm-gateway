@@ -37,3 +37,25 @@ def log_request(
     
     with METRICS_FILE.open("a") as f:
         f.write(json.dumps(record) + "\n")
+        
+        
+# appends to the log_request() you built on Day 1 -- same METRICS_FILE, same schema-first habit
+def log_structured(route: str, model: str, schema: str, status: str,
+                   attempts: int, total_ms: float, usage: dict):
+    """Structured routes are non-streaming (Sec 2.1) -- no ttft_ms /
+    decode_tps here. status + attempts are the raw atoms
+    schema_violation_rate, repair_success_rate, and dlq_rate get
+    computed from downstream."""
+    record = {
+        "ts": time.time(),
+        "route": route,
+        "model": model,
+        "schema": schema,
+        "status": status,          # "ok" | "repaired" | "refused" | "dead_letter"
+        "attempts": attempts,      # 1 = clean first try, 2 = needed repair
+        "input_tokens": usage["input_tokens"],
+        "output_tokens": usage["output_tokens"],
+        "total_ms": round(total_ms, 1),
+    }
+    with METRICS_FILE.open("a") as f:
+        f.write(json.dumps(record) + "\n")        
