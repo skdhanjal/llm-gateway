@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from gateway.guardrails import screen_input
 from gateway.schemas import SCHEMA_REGISTRY
 from gateway.structured import structured_pipeline
 
@@ -50,6 +51,8 @@ async def chat_stream(req: ChatRequest):
     
     extra_params = params_for(route_cfg.model, route_cfg.intent) if route_cfg else {}
     
+    verdict = screen_input(req.prompt, source="user")
+    
     async def generate():
         stats = None
         async for delta, stats in stream_openai(
@@ -66,7 +69,9 @@ async def chat_stream(req: ChatRequest):
                 est_input_tokens=est_token,
                 tokens_dropped=tokens_dropped,
                 truncation=route_cfg.truncation.value if tokens_dropped else None,
-                params=extra_params
+                params=extra_params,
+                screen_flagged=verdict.flagged,
+                screen_source="user"
             )
             
     return StreamingResponse(generate(), media_type="text/plain")
@@ -85,10 +90,15 @@ async def structured_endpoint(req: StructuredRequest):
     result = await structured_pipeline(req.task, schema_cls)
 
     log_structured(
-        route="structured", model=settings.default_model, schema=req.schema,
-        status=result.status, attempts=result.attempts,
-        total_ms=result.total_ms, usage=result.usage,
+        route="structured", 
+        model=settings.default_model, 
+        schema=req.schema,
+        status=result.status, 
+        attempts=result.attempts,
+        total_ms=result.total_ms, 
+        usage=result.usage
     )
+    
     if result.status == "dead_letter":
         # Sec 2.2's alert -- a real pager rule from Phase 5 onward
         print(f"[ALERT] DLQ write -- schema={req.schema} task={req.task[:80]!r}")
